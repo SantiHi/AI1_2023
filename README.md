@@ -1,3 +1,3 @@
 # AI1 labs from TJHSST - Dr. Gabor's class 
 
-## ended with - 93.7 
+## current grade - 93.6
