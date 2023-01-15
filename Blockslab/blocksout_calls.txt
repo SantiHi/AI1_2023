@@ -1,0 +1,35 @@
+Fri Dec  9 09:53:33 2022    blocksout.dat
+
+         219186 function calls (219136 primitive calls) in 0.172 seconds
+
+   Ordered by: call count
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   149894    0.068    0.000    0.080    0.000 blockstrings.py:69(placeable)
+    68812    0.013    0.000    0.013    0.000 {method 'count' of 'str' objects}
+      160    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
+       51    0.000    0.000    0.000    0.000 blockstrings.py:32(isSolved)
+     51/1    0.000    0.000    0.149    0.149 blockstrings.py:57(Brute_Force)
+       50    0.004    0.000    0.004    0.000 blockstrings.py:40(makepzl)
+       50    0.000    0.000    0.000    0.000 blockstrings.py:102(rotateable)
+       50    0.064    0.001    0.144    0.003 blockstrings.py:81(findchoices)
+       21    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+       19    0.000    0.000    0.000    0.000 {method 'index' of 'str' objects}
+        9    0.000    0.000    0.000    0.000 blockstrings.py:25(<lambda>)
+        4    0.022    0.005    0.022    0.005 {built-in method builtins.print}
+        2    0.000    0.000    0.000    0.000 {built-in method time.process_time}
+        1    0.000    0.000    0.000    0.000 blockstrings.py:24(<listcomp>)
+        1    0.000    0.000    0.000    0.000 blockstrings.py:27(<dictcomp>)
+        1    0.000    0.000    0.000    0.000 blockstrings.py:7(createpuzzle)
+        1    0.000    0.000    0.172    0.172 blockstrings.py:131(main)
+        1    0.001    0.001    0.001    0.001 blockstrings.py:105(interpretsol)
+        1    0.000    0.000    0.172    0.172 <string>:1(<module>)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 {method 'pop' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 {method 'reverse' of 'list' objects}
+        1    0.000    0.000    0.172    0.172 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.round}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.sorted}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.sum}
+
+
