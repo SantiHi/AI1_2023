@@ -23,7 +23,7 @@ def makeGlobals():
        currenttoken = "x" if (board.lower().count("x") - board.lower().count("o")) % 2 == 0 else "o"
     return board, moves, currenttoken
 
-def checkpossible(pos, board, othertoken, token, alreadychecked): 
+def checkpossible(pos, board, token, alreadychecked): 
     moves = set()
     positionstocheck = [pos - 9, pos - 8, pos - 7, pos -1, pos + 1, pos + 7, pos + 8, pos + 9]
     for position in positionstocheck: 
@@ -36,12 +36,12 @@ def checkpossible(pos, board, othertoken, token, alreadychecked):
                 if(position != ps) and btrue: 
                     i +=1 
                 else: btrue = False
-            if(checkstring(tempstring, i, token, position)): 
+            if(checkstring(tempstring, token)): 
                 moves.add(position)
         alreadychecked.add(position)
     return moves
 
-def checkstring(csstring, postoken, tokens, pos): 
+def checkstring(csstring, tokens): 
     token = tokens[0].lower()
     othertoken = "o" if token == "x" else "x"
     string = csstring.lower(); 
@@ -76,7 +76,7 @@ def findMoves(board, currenttoken):
     for i, val in enumerate(board): 
         if val in lookingfortoken: enemytokens.append(i)
     for pos in enemytokens: 
-        possiblepositions = checkpossible(pos, board, lookingfortoken, currenttoken, alreadchecked)
+        possiblepositions = checkpossible(pos, board, currenttoken, alreadchecked)
         if possiblepositions: 
             for pp in possiblepositions: moves.add(pp)
     return moves 
@@ -87,25 +87,77 @@ def display(board):
 corners = {0, 7, 63, 56}; hedges = {0, 1, 2, 3, 4, 5, 6, 7, 56, 57, 58, 59, 60, 61, 62, 63}; vedges = {0,8,16,24,32,40,48,56,7,15,23,31,39,47,55,63}
 cornertoedges = {0:{1, 8, 9}, 7:{6, 15, 14}, 63:{62, 55, 54}, 56:{57, 48, 49}}; dangerzone = {9, 10, 11, 12, 13, 14, 17, 25, 33, 41, 49, 57, 50, 51, 52, 53, 54, 46, 38, 30, 22}
 
-def negamax(brd, tkn): 
+CACHENM = {}
+
+def negamax(brd, tkn, firstpass): 
     eTkn = "x" if tkn.lower() == "o" else "o"
     if brd.count(".") == 0 or (not (fm:=findMoves(brd, tkn)) and not (efm:=findMoves(brd, eTkn))): 
         return [brd.count(tkn)-brd.count(eTkn)]
+    if firstpass: fm = [(fqm:=quickMove1(brd, tkn))] + [*(fm - {fqm})]
     bestSoFar = [-65]
+    if (key:=(brd, tkn)) in CACHENM:       
+       return CACHENM[key]
     if not fm: 
         for mv in efm: 
-            nm = negamax(brd, eTkn)
+            nm = negamax(brd, eTkn, False)
             return [-nm[0]] + nm[1:] + [-1]
     for mv in fm: 
         newBrd = makeMove(brd, tkn, mv)
-        nm = negamax(newBrd, eTkn)
+        nm = negamax(newBrd, eTkn, False)
         if -nm[0] > bestSoFar[0]: 
             bestSoFar = [-nm[0]] + nm[1:] + [mv]
+    CACHENM[key] = bestSoFar 
     return bestSoFar
 
 def quickMove(board, tkn): 
     if board.count(".") < 8: 
-        return negamax(board, tkn)[-1]
+        return negamax(board, tkn, True)[-1]
+    moves = findMoves(board, tkn)
+    etkn = "x" if tkn.lower() == "o" else "o"
+    unhappy = []; dangerzoness = []
+    for m in moves: 
+        if m in corners: 
+            return m
+    unwantedcmoves = set() 
+    for k in cornertoedges: 
+        if board[k] == ".": 
+            unwantedcmoves.update(cornertoedges[k])
+    potato = [*moves]
+    for i, m in enumerate(potato): 
+        if m in unwantedcmoves: unhappy.append(potato.pop(i))
+        elif m in dangerzone: dangerzoness.append(potato.pop(i))
+    potato= potato + dangerzoness + unhappy
+    for m in potato:
+            if m in vedges: 
+                tstrd = "".join([board[i] for i in postoconstraints[m][0]])
+                tstru = "".join([board[i] for i in postoconstraints[m][1]])
+                if tkn.lower() == "x":
+                    if(re.search("^[Oo]*[Xx]+$", tstrd[1:])): return m 
+                    if(re.search("^[Oo]*[Xx]+$", tstru[1:])): return m 
+                else: 
+                    if(re.search("^[Xx]*[Oo]+$", tstrd[1:])): return m 
+                    if(re.search("^[Xx]*[Oo]+$", tstru[1:])): return m 
+            if m in hedges: 
+                tstrr = "".join([board[i] for i in postoconstraints[m][2]])
+                tstrl = "".join([board[i] for i in postoconstraints[m][3]])
+                if tkn.lower() == "x":
+                    if(re.search("^[Oo]*[Xx]+$", tstrr[1:])): return m 
+                    if(re.search("^[Oo]*[Xx]+$", tstrl[1:])): return m 
+                else: 
+                    if(re.search("^[Xx]*[Oo]+$", tstrr[1:])): return m 
+                    if(re.search("^[Xx]*[Oo]+$", tstrl[1:])): return m 
+    min = 100; move = 10231
+    for m in moves: 
+        tb = board
+        if m not in unwantedcmoves: 
+            tb = makeMove(tb, tkn, m)
+            psmoves = findMoves(tb, etkn)
+            if (v:=len(psmoves)) <= 1: return m
+            if v < min: min = v; move = m 
+    if not min == 100: return move
+    return [*moves][0]
+
+def quickMove1(board, tkn): 
     moves = findMoves(board, tkn)
     etkn = "x" if tkn.lower() == "o" else "o"
     unhappy = []; dangerzoness = []
@@ -206,7 +258,7 @@ def main():
        currenttoken = currenttoken if cct else othertoken
        mypref = quickMove(board, currenttoken)
        print(f"The preffered move is: {mypref}")
-       nm = negamax(board, currenttoken)
+       nm = negamax(board, currenttoken, True)
        print(f"Min score: {nm[0]}; move sequence: {nm[1:]}")
 
 global alphpos, alphpostoindex, postoconstraints 
