@@ -8,8 +8,8 @@ myRegexLst = [
     r"/\b(?=\w*cat)\w{6}\b/i",
     r"/\b(?=\w*bri)(?=\w*ing)\w{5,9}\b/i",
     r"/\b(?!\w*cat)\w{6}\b/i", 
-    r"", 
-    r"/\b(?!10011)[01]+\b/" 
+    r"/\b(?!\w*(\w)\w*\1)\w+\b/i", 
+    r"/\b(?![01]*10011[01]*)[01]+\b/" 
 ] 
 if idx < len(myRegexLst):
   print(myRegexLst[idx])
