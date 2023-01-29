@@ -1,14 +1,18 @@
 import sys; args = sys.argv[1:] 
 import re
+
+HOLELIMIT = 10
+
 def makeGlobals(): 
+    global HOLELIMIT
     board = '.' * 27 + 'OX......XO' + '.' * 27
     moves = []
-    args = ["19183711_3_4_9_2-116_02517_1_52032461233413410215538454431262240292451394330421323_8_6504759575848566061495214_7"]
     currenttoken = ""
     if(args): 
         for val in args: 
             if (val in "XxOo"): currenttoken = val 
-            elif "." in val: board = val  
+            elif "." in val: board = val; 
+            elif "HL" in val: HOLELIMIT  = int(val[2:])
             elif(len(val) > 2): 
                 for i in range(0, len(val), 2): 
                     m = val[i:i+2]
@@ -20,27 +24,22 @@ def makeGlobals():
                         moves.append(int(m))
             elif str(val[0]) not in alph and str(val[0]) not in alphl: moves.append(val)
             else: moves.append(alphpostoindex[val])
+    xnum = board.lower().count("x") 
+    onum = board.lower().count("o")
+    print(f"{board} {xnum}/{onum} \n")
     if not currenttoken: 
        currenttoken = "x" if (board.lower().count("x") - board.lower().count("o")) % 2 == 0 else "o"
-    return board, moves, currenttoken
+    return board.lower(), moves, currenttoken
 
-def checkpossible(pos, board, token, alreadychecked): 
-    moves = set()
-    positionstocheck = [pos - 9, pos - 8, pos - 7, pos -1, pos + 1, pos + 7, pos + 8, pos + 9]
-    for position in positionstocheck: 
-        if(position >= len(board) or position < 0): continue
-        if board[position] != "." or position in alreadychecked: continue
-        for cset in postoconstraints[position]: 
-            tempstring = ""; i = 0; btrue = True 
+def checkpossible(pos, board, token): 
+        moves = set()
+        for cset in postoconstraints[pos]: 
+            tempstring = ""; 
             for ps in cset: 
                 tempstring += board[ps]
-                if(position != ps) and btrue: 
-                    i +=1 
-                else: btrue = False
             if(checkstring(tempstring, token)): 
-                moves.add(position)
-        alreadychecked.add(position)
-    return moves
+                moves.add(pos)
+        return moves
 
 def checkstring(csstring, tokens): 
     token = tokens[0].lower()
@@ -51,7 +50,29 @@ def checkstring(csstring, tokens):
     if(string[1:ind].count(".") >= 1 or string[1:ind].count(othertoken) == 0): return False
     return True
 
-def makeMove(board, token, move): 
+def tinit(board, token, cs): 
+    for i, v in enumerate(cs):
+        if i == 0: continue 
+        if board[v] == ".": return False
+        if board[v] == token: return True 
+    return False
+
+def makeMove(board, token, move):
+        t = token.lower()
+        brd = board.lower()
+        ch = [*brd]; 
+        for cs in postoconstraints[move]: 
+            if not tinit (brd, t, cs): continue 
+            for i, ps in enumerate(cs): 
+                if i == 0: continue
+                if (ts:=brd[ps]) == ".": break
+                if ts == t: break 
+                ch[ps] = t
+        ch[move] = t.upper()
+        return "".join(ch)
+
+
+def makeMove1(board, token, move): 
         t = token.lower()
         changelist = set()
         for cs in postoconstraints[move]: 
@@ -66,23 +87,21 @@ def makeMove(board, token, move):
             if finalind: 
                 for pos in range(finalind): changelist.add(cs[pos])
         for changedpos in changelist: 
-            board = board[:changedpos] + token + board[changedpos + 1:]
-        return board
+            board = board[:changedpos].lower() + t + board[changedpos + 1:].lower()
+        return board[:move] + token.upper() + board[move + 1:]
 
-
+fmcache = {}
 
 def findMoves(board, currenttoken): 
-    alreadchecked = set()
-    lookingfortoken = "Oo" if currenttoken in "Xx" else "Xx"
-    enemytokens = [] 
+    if (key:=(board, currenttoken)) in fmcache: return fmcache[key] 
+    dotpositions = {i for i, v in enumerate(board) if v == "."}
     moves = set()
-    for i, val in enumerate(board): 
-        if val in lookingfortoken: enemytokens.append(i)
-    for pos in enemytokens: 
-        possiblepositions = checkpossible(pos, board, currenttoken, alreadchecked)
+    for pos in dotpositions: 
+        possiblepositions = checkpossible(pos, board, currenttoken)
         if possiblepositions: 
             for pp in possiblepositions: moves.add(pp)
-    return moves 
+    fmcache[key] = moves
+    return fmcache[key] 
 
 def display(board):  
     [print(board[pos]) if (pos + 1) % 8 == 0 else print(board[pos], end = "") for pos in range(64)]
@@ -90,20 +109,18 @@ def display(board):
 corners = {0, 7, 63, 56}; hedges = {0, 1, 2, 3, 4, 5, 6, 7, 56, 57, 58, 59, 60, 61, 62, 63}; vedges = {0,8,16,24,32,40,48,56,7,15,23,31,39,47,55,63}
 cornertoedges = {0:{1, 8, 9}, 7:{6, 15, 14}, 63:{62, 55, 54}, 56:{57, 48, 49}}; dangerzone = {9, 10, 11, 12, 13, 14, 17, 25, 33, 41, 49, 57, 50, 51, 52, 53, 54, 46, 38, 30, 22}
 
-CACHENM = {}
-
-def negamax(brd, tkn, firstpass, lowerBnd, upperBnd): 
+def alphabeta(brd, tkn, firstpass, lowerBnd, upperBnd): 
     eTkn = "x" if tkn.lower() == "o" else "o"
     if brd.count(".") == 0 or (not (fm:=findMoves(brd, tkn)) and not (efm:=findMoves(brd, eTkn))): 
-        return [brd.count(tkn)-brd.count(eTkn)]
+        return [brd.lower().count(tkn)-brd.lower().count(eTkn)]
     if firstpass: fm = [(fqm:=quickMove1(brd, tkn))] + [*(fm - {fqm})]
     if not fm: 
         for mv in efm: 
-            ab = negamax(brd, eTkn, False, -upperBnd, -lowerBnd)
+            ab = alphabeta(brd, eTkn, False, -upperBnd, -lowerBnd)
             return [-ab[0]] + ab[1:] + [-1]
     best = [lowerBnd-1]
     for mv in fm: 
-        ab = negamax(makeMove(brd, tkn, mv), eTkn, False, -upperBnd, -lowerBnd)
+        ab = alphabeta(makeMove(brd, tkn, mv), eTkn, False, -upperBnd, -lowerBnd)
         score = -ab[0]  
         if score < lowerBnd: continue 
         if score > upperBnd: return [score] 
@@ -112,8 +129,11 @@ def negamax(brd, tkn, firstpass, lowerBnd, upperBnd):
     return best
 
 def quickMove(board, tkn): 
-    if board.count(".") < 10: 
-        return negamax(board, tkn, True, -64, 64)[-1]
+    global HOLELIMIT
+    if board == "": HOLELIMIT = tkn
+    if board.count(".") < HOLELIMIT:  
+        ab = alphabeta(board, tkn, True, -64, 64)
+        return ab[-1]
     moves = findMoves(board, tkn)
     etkn = "x" if tkn.lower() == "o" else "o"
     unhappy = []; dangerzoness = []
@@ -216,10 +236,11 @@ def printturn(board, possiblemoves, token):
     showmoves(board, possiblemoves)
     #printing 1D board
     scorex = board.lower().count("x"); scoreO = board.lower().count("o")
-    print("\n" + f"{board} {scorex}/{scoreO}" ) 
+    print("\n" + f"{board.lower()} {scorex}/{scoreO}" ) 
     #printing possible moves
-    print(f"Possible moves for {token}:", end = " ")
-    [print(f"{v},", end = " ") if i+1 != len(possiblemoves) else print(v) for i, v in enumerate(possiblemoves)]
+    if possiblemoves: 
+       print(f"Possible moves for {token}:", end = " ")
+       [print(f"{v},", end = " ") if i+1 != len(possiblemoves) else print(v) for i, v in enumerate(possiblemoves)]
     print(" ")
 
 def turn(currenttoken, othertoken, board, move):  
@@ -234,7 +255,6 @@ def turn(currenttoken, othertoken, board, move):
         newpos = findMoves(board, currenttoken)
         printturn(board, newpos, currenttoken)
     return currenttoken, othertoken, board
-
 
 def main(): 
     board, moves, currenttoken = makeGlobals()
@@ -258,11 +278,14 @@ def main():
     #Checking if there are any moves left
     if (cct:=findMoves(board, currenttoken)) or (cot:=findMoves(board, othertoken)): 
        currenttoken = currenttoken if cct else othertoken
-       mypref = quickMove(board, currenttoken)
+       mypref = quickMove1(board, currenttoken)
        print(f"The preffered move is: {mypref}")
-       nm = negamax(board, currenttoken, -64, 64, True)
-       print(f"Min score: {nm[0]}; move sequence: {nm[1:]}")
-
+       if board.count(".") < HOLELIMIT : 
+        ab = alphabeta(board, currenttoken, True, -64, 64)
+        print(f"Min score: {ab[0]}; move sequence: {ab[1:]}") 
+        board = makeMove(board, currenttoken, ab[1])
+        printturn(board, findMoves(board, currenttoken), currenttoken)
+    
 global alphpos, alphpostoindex, postoconstraints 
 postoconstraints = [] 
 alph = "ABCDEFGH"
@@ -271,14 +294,12 @@ alphpos = [letter + str((index + 1) % 9) for index in range(8) for letter in alp
 alphpos = alphpos + [letter + str((index + 1) % 9) for index in range(8) for letter in alphl]
 alphpostoindex = {alphpos[index]: index%64 for index in range(128) }
 cstr = ".Oxxo"
-print(True if re.search("^[Oo]*[Xx]+$", cstr[1:]) else False)
 for i in range(64):  
         row = i - i %8 ; col = i % 8
         whattoadd = [[newpos for newpos in range(i, 64, 8)],
                      [newpos for newpos in range(i, -1, -8)], 
                      [newpos for newpos in range(i, i + 8- i %8)], 
-                     [newpos for newpos in range(i, i -( i %8) -1, -1)],
-                     ]
+                     [newpos for newpos in range(i, i -( i %8) -1, -1)],]
         #findstart for downright 
         startind = i 
         while startind % 8 != 0 and startind >= 9: 
@@ -303,7 +324,6 @@ for i in range(64):
             dl = longdiagl[ind:]
         whattoadd.append(ul); whattoadd.append(ur); whattoadd.append(dl); whattoadd.append(dr)
         postoconstraints.append(whattoadd)
-
 if (__name__ == "__main__"): 
     main()
 # Santiago Criado, pd 6, 2024

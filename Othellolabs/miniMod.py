@@ -40,6 +40,7 @@ def playGame(quickMove, token, show=False):
       try:
         mv = quickMove(brd, tknToPlay)
         if mv not in moves:
+          quickMove(brd, tknToPlay)
           dt = ' '.join(aSCORES)       # tranche summary
           print(f"Partial tranche summary: {dt}")
           print(f"\nIllegal move {mv} as {token} in '{condense(transcript)}'")
@@ -51,10 +52,13 @@ def playGame(quickMove, token, show=False):
         raise
        
     transcript.append(mv)
-
-    # Make and show the move (3rd arg is move to make)
+    # Make and show the move (3rd arg is move to make)x
+    #brd2 = brd
     brd = makeMove(brd, tknToPlay, mv)      # , moves   
-
+   # brd2 = makeMove1(brd2, tknToPlay, mv)
+   # if (brd.lower() != brd2.lower()): print(f"Error in makeMove: {brd} != {brd2}  move: {mv}" ); showmoves(brd, ""); print("")
+    
+                      
     # Prepare for next round
     brd = brd.lower()                     # Just in case
     tknToPlay = 'xo'[tknToPlay=='x']      # Switch to other side
@@ -70,8 +74,8 @@ def playGame(quickMove, token, show=False):
 
 
 # Parse args here
-tkn, trnyCt, defFile = "x", 1, "Othello5"    # token, game count, users file name
-for arg in args:
+tkn, trnyCt, defFile = "x",  10, "Othello6"    # token, game count, users file name
+for arg in args: 
   if len(arg)==1 and arg in "xXoO ": tkn = arg.lower()
   elif re.search(r"^\d+$",arg): trnyCt = int(arg)        # Number of games to play
   else: defFile = arg[:-3] if arg.lower().endswith(".py") else arg
@@ -81,8 +85,8 @@ for arg in args:
 sys.argv = [defFile+'.py']  # else imported file sees sys.argv of caller
 try:
   _tmp = __import__(defFile, globals=None, locals=None,
-                    fromlist=['quickMove', 'findMoves', 'makeMove'], level=0)
-  quickMove, findMoves, makeMove = _tmp.quickMove, _tmp.findMoves, _tmp.makeMove
+                    fromlist=['quickMove', 'findMoves', 'makeMove', 'makeMove1'], level=0)
+  quickMove, findMoves, makeMove, makeMove1, showmoves = _tmp.quickMove, _tmp.findMoves, _tmp.makeMove, _tmp.makeMove1, _tmp.showmoves
 except:
   print("Error on import")
   raise
@@ -98,7 +102,7 @@ else:
   res, worst, mine, tkns = [], [], 0, 0  # all game results, worst 3 games, my token total, all tokens total
   aSCORES = []
   for gameNum in range(1, trnyCt+1):
-    gameStart = time.process_time()
+    gameStart = time.process_time()     
     pg = playGame(quickMove, tkn)   # returns [myTknCt, enemyTknCt, gameXscript]
     mine, tkns = mine+pg[0], tkns+pg[0]+pg[1]
     timeUsed = time.process_time() - gameStart
