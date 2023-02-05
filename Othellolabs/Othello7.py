@@ -10,6 +10,7 @@ def makeGlobals():
     board = '.' * 27 + 'OX......XO' + '.' * 27
     #moves = [26, 18, 44, 25 ,9 ,10, 17 ,16, 2, 11, 12, 3, 32, 33, 24, 8, 4, 19, 42, 37, 0, 51, 52, 53, 38, 49, 62, 30, 20, 13, 46, 21, 5, 39, 43, 55, 14, 7, 41, 29, 23, 50, 1 ,40, 59, 6, 61, 54, 22, 34, 56, 47, 60, 58, 45]
     moves = []
+    args = ["26202934121342332432432130_41910112517_3_61841404816_256_8_0_5_1_9_73714-1221523-131-1"]
     currenttoken = ""
     if(args): 
         for val in args: 
@@ -93,6 +94,63 @@ def display(board):
 corners = {0, 7, 63, 56}; hedges = {0, 1, 2, 3, 4, 5, 6, 7, 56, 57, 58, 59, 60, 61, 62, 63}; vedges = {0,8,16,24,32,40,48,56,7,15,23,31,39,47,55,63}
 cornertoedges = {0:{1, 8, 9}, 7:{6, 15, 14}, 63:{62, 55, 54}, 56:{57, 48, 49}}; dangerzone = {9, 10, 11, 12, 13, 14, 17, 25, 33, 41, 49, 57, 50, 51, 52, 53, 54, 46, 38, 30, 22} 
 
+def evaluate(brd, tkn, etkn, tkenmoves, etknmoves): 
+    overallscore = 0 
+    #check corners if equals to tkn 
+    #subtract number of oppennt's corners 
+    overallscore += sum([5 for pos in corners if brd[pos] == tkn])
+    #add safe edge positions 
+    for pos in hedges: 
+        if brd[pos] == tkn:
+                tstrr = "".join([brd[i] for i in postoconstraints[pos][2]])
+                tstrl = "".join([brd[i] for i in postoconstraints[pos][3]])
+                if tkn.lower() == "x":
+                    if(re.search("^[Oo]*[Xx]+$", tstrr[1:])): overallscore += 1
+                    if(re.search("^[Oo]*[Xx]+$", tstrl[1:])): overallscore += 1
+                else: 
+                    if(re.search("^[Xx]*[Oo]+$", tstrr[1:])): overallscore += 1 
+                    if(re.search("^[Xx]*[Oo]+$", tstrl[1:])): overallscore += 1  
+    for pos in vedges:
+        if brd[pos] == tkn:
+                tstrd = "".join([brd[i] for i in postoconstraints[pos][0]])
+                tstru = "".join([brd[i] for i in postoconstraints[pos][1]])
+                if tkn.lower() == "x":
+                    if(re.search("^[Oo]*[Xx]+$", tstrd[1:])): overallscore += 1
+                    if(re.search("^[Oo]*[Xx]+$", tstru[1:])): overallscore += 1
+                else: 
+                    if(re.search("^[Xx]*[Oo]+$", tstrd[1:])): overallscore += 1
+                    if(re.search("^[Xx]*[Oo]+$", tstru[1:])): overallscore += 1 
+    overallscore +- sum([-5 for pos in corners if brd[pos] == etkn])
+    #subtract number of opponent's moves
+    overallscore = overallscore - len(etknmoves)
+    #add number of tkn moves
+    overallscore += len(tkenmoves)
+    #subtract if in danger zone and add if opponent in danger zone
+    overallscore -= sum([-1 for pos in dangerzone if brd[pos] == tkn])
+    #return overallscore
+    return [overallscore]
+
+def midGameAB(brd, tkn, firstpass, lowerBnd, upperBnd, depth): 
+    eTkn = "x" if tkn.lower() == "o" else "o"
+    fm = findMoves(brd, tkn)
+    if depth == 0 or (not (fm:=findMoves(brd, tkn)) and not (efm:=findMoves(brd, eTkn))): 
+        return evaluate(brd, tkn, eTkn, fm, findMoves(brd, eTkn))
+    if firstpass: fm = [(fqm:=quickMove1(brd, tkn))] + [*(fm - {fqm})]
+    if not fm: 
+        for mv in efm:  
+            ab = midGameAB(brd, eTkn, False, -upperBnd, -lowerBnd, depth -1)
+            return [-ab[0]] + ab[1:] + [-1]
+    best = [lowerBnd-1]
+    for mv in fm: 
+        newb = makeMove(brd, tkn, mv)
+        ab = midGameAB(newb, eTkn, False, -upperBnd, -lowerBnd, depth-1)
+        score = -ab[0]  
+        if score < lowerBnd: continue 
+        if score > upperBnd: return [score] 
+        best = [score] + ab[1:] + [mv]
+        print(f"Min score: {best[0]}; move sequence: {best[1:]}")
+        lowerBnd = score + 1
+    return best
 
 
 def alphabeta(brd, tkn, firstpass, lowerBnd, upperBnd): 
@@ -111,6 +169,7 @@ def alphabeta(brd, tkn, firstpass, lowerBnd, upperBnd):
         if score < lowerBnd: continue 
         if score > upperBnd: return [score] 
         best = [score] + ab[1:] + [mv]
+        print(f"Min score: {best[0]}; move sequence: {best[1:]}")
         lowerBnd = score + 1
     return best
 
@@ -120,6 +179,8 @@ def quickMove(board, tkn):
     if board.count(".") < HOLELIMIT:  
         ab = alphabeta(board, tkn, True, -64, 64)
         return ab[-1]
+    else: 
+        return midGameAB(board, tkn, True, -64, 64, 3)[-1]
     moves = findMoves(board, tkn)
     etkn = "x" if tkn.lower() == "o" else "o"
     unhappy = []; dangerzoness = []
@@ -269,7 +330,10 @@ def main():
        if board.count(".") < HOLELIMIT : 
         ab = alphabeta(board, currenttoken, True, -64, 64)
         print(f"Min score: {ab[0]}; move sequence: {ab[1:]}") 
-    
+       else: 
+        ab = midGameAB(board, currenttoken, True, -64, 64, 2) 
+        print(f"Min score: {ab[0]}; move sequence: {ab[1:]}")
+
 global alphpos, alphpostoindex, postoconstraints 
 postoconstraints = [] 
 alph = "ABCDEFGH"

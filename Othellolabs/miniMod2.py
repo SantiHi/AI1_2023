@@ -74,7 +74,7 @@ def playGame(quickMove, token, show=False):
 
 
 # Parse args here
-tkn, trnyCt, defFile = "x",  10, "Othello7"    # token, game count, users file name
+tkn, trnyCt, defFile = "x",  10, "Othello6"    # token, game count, users file name
 for arg in args: 
   if len(arg)==1 and arg in "xXoO ": tkn = arg.lower()
   elif re.search(r"^\d+$",arg): trnyCt = int(arg)        # Number of games to play
